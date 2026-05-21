@@ -17,9 +17,9 @@ against it, and asserts:
 
 ```bash
 # from repo root
-docker compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml up -d
-python tests/e2e/matrix_xsign_bootstrap/test_bootstrap.py
-docker compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml down -v
+HOMESERVER_HOST_PORT=36267 podman-compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml up -d
+E2E_MATRIX_HS=http://127.0.0.1:36267 CONTAINER_RUNTIME=podman python tests/e2e/matrix_xsign_bootstrap/test_bootstrap.py
+HOMESERVER_HOST_PORT=36267 podman-compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml down -v
 ```
 
 The `down -v` step removes the persistent volume so the next run gets
@@ -28,9 +28,10 @@ registration token is only valid before the first user is created.
 
 ## Port
 
-The compose binds Continuwuity to `127.0.0.1:26167` by default. Override
-with `HOMESERVER_HOST_PORT=NNNNN docker compose up -d` if that port is
-busy locally.
+The compose binds Continuwuity to `127.0.0.1:36267` by default. Override
+with `HOMESERVER_HOST_PORT=NNNNN podman-compose up -d` if that port is
+busy locally. Set `CONTAINER_RUNTIME=docker` only when debugging against
+Docker-specific behavior.
 
 ## What the test exercises
 
@@ -46,4 +47,4 @@ small price for not requiring the full hermes-agent runtime in CI.
 
 - `mautrix` Python package is not installed
 - The homeserver isn't reachable at `$E2E_MATRIX_HS` (default
-  `http://127.0.0.1:26167`)
+  `http://127.0.0.1:36267`)

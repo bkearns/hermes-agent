@@ -1,6 +1,6 @@
 """End-to-end test for Matrix cross-signing auto-bootstrap.
 
-Spins a real Continuwuity homeserver in docker, registers a fresh bot,
+Spins a real Continuwuity homeserver in Podman, registers a fresh bot,
 runs the patched ``MatrixAdapter.connect()`` against it, and asserts:
 
   1. cross-signing keys get published with **unpadded** base64 keyids
@@ -11,16 +11,16 @@ runs the patched ``MatrixAdapter.connect()`` against it, and asserts:
   3. the bot's current device is signed by the new SSK, so Element
      considers the device "verified by its owner".
 
-Self-contained: ``docker compose up -d`` brings up Continuwuity on
-127.0.0.1:26167; this script registers a fresh bot using the
+Self-contained: ``podman-compose up -d`` brings up Continuwuity on
+127.0.0.1:36267; this script registers a fresh bot using the
 homeserver's one-time admin registration token (printed once at first
 boot, parsed from the container logs); then drives the gateway code.
 
 Run from repo root::
 
-    docker compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml up -d
-    python tests/e2e/matrix_xsign_bootstrap/test_bootstrap.py
-    docker compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml down -v
+    HOMESERVER_HOST_PORT=36267 podman-compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml up -d
+    E2E_MATRIX_HS=http://127.0.0.1:36267 CONTAINER_RUNTIME=podman python tests/e2e/matrix_xsign_bootstrap/test_bootstrap.py
+    HOMESERVER_HOST_PORT=36267 podman-compose -f tests/e2e/matrix_xsign_bootstrap/docker-compose.yml down -v
 
 Skipped automatically if mautrix isn't installed or the homeserver
 isn't reachable.
@@ -46,9 +46,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
-HS = os.environ.get("E2E_MATRIX_HS", "http://127.0.0.1:26167")
+HS = os.environ.get("E2E_MATRIX_HS", "http://127.0.0.1:36267")
 COMPOSE_DIR = Path(__file__).parent
-CONTAINER_NAME = "matrix_xsign_bootstrap-homeserver-1"
+CONTAINER_NAME = os.environ.get("CONTAINER_NAME", "matrix_xsign_bootstrap_homeserver_1")
+CONTAINER_RUNTIME = os.environ.get("CONTAINER_RUNTIME", "podman")
 
 
 def _hs_reachable() -> bool:
@@ -64,14 +65,14 @@ def _first_time_token() -> str | None:
 
     The configured CONTINUWUITY_REGISTRATION_TOKEN does NOT activate
     until an account exists, so we have to pull this token out of the
-    docker logs to bootstrap the very first user.
+    container logs to bootstrap the very first user.
     """
     try:
         out = subprocess.run(
-            ["docker", "logs", CONTAINER_NAME],
+            [CONTAINER_RUNTIME, "logs", CONTAINER_NAME],
             capture_output=True, text=True, check=True,
         ).stdout + subprocess.run(
-            ["docker", "logs", CONTAINER_NAME],
+            [CONTAINER_RUNTIME, "logs", CONTAINER_NAME],
             capture_output=True, text=True, check=True,
         ).stderr
     except Exception:
